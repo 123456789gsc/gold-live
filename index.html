@@ -414,8 +414,10 @@
     <script>
         const CONFIG = {
             corsProxies: [
-                'https://corsproxy.io/?',
-                'https://api.allorigins.win/raw?url='
+                'https://api.allorigins.win/raw?url=',
+                'https://corsproxy.io/?url=',
+                'https://api.cors.lol/?url=',
+                'https://proxy.cors.sh/'
             ],
             yahooUrls: {
                 '1d': 'https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=5m&range=1d',
@@ -441,7 +443,8 @@
                 const c = localStorage.getItem(CONFIG.cacheKey);
                 if (c) {
                     const d = JSON.parse(c);
-                    if (Date.now() - d.timestamp < 300000) return d;
+                    // 缓存24小时有效（用于离线显示）
+                    if (Date.now() - d.timestamp < 86400000) return d;
                 }
             } catch (e) { }
             return null;
@@ -480,12 +483,38 @@
         }
 
         async function fetchWithProxy(url) {
-            const promises = CONFIG.corsProxies.map(async (proxy) => {
-                const res = await fetchWithTimeout(proxy + encodeURIComponent(url), 15000);
-                if (!res.ok) throw new Error('Not OK');
-                return res.json();
-            });
-            return Promise.any(promises);
+            const errors = [];
+
+            // 依次尝试每个代理
+            for (const proxy of CONFIG.corsProxies) {
+                try {
+                    let fullUrl;
+                    if (proxy.includes('cors.sh')) {
+                        fullUrl = proxy + url;
+                    } else {
+                        fullUrl = proxy + encodeURIComponent(url);
+                    }
+
+                    const res = await fetchWithTimeout(fullUrl, 12000);
+                    if (!res.ok) {
+                        errors.push(`${proxy}: HTTP ${res.status}`);
+                        continue;
+                    }
+
+                    const text = await res.text();
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        errors.push(`${proxy}: JSON解析失败`);
+                        continue;
+                    }
+                } catch (e) {
+                    errors.push(`${proxy}: ${e.message}`);
+                }
+            }
+
+            console.error('所有代理失败:', errors);
+            throw new Error('无法获取数据');
         }
 
         function parseYahooData(data) {
