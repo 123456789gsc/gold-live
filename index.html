@@ -206,14 +206,6 @@
             font-weight: 600;
         }
 
-        .price-card .value.gold {
-            color: #ffd700;
-        }
-
-        .price-card .value.silver {
-            color: #c0c0c0;
-        }
-
         .price-card .value.cny {
             color: #ff6b6b;
         }
@@ -263,6 +255,8 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .chart-title {
@@ -270,8 +264,35 @@
             color: #ffd700;
         }
 
+        .chart-tabs {
+            display: flex;
+            gap: 6px;
+        }
+
+        .chart-tab {
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #8b949e;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chart-tab:hover {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: rgba(255, 215, 0, 0.3);
+        }
+
+        .chart-tab.active {
+            background: rgba(255, 215, 0, 0.2);
+            border-color: #ffd700;
+            color: #ffd700;
+        }
+
         .chart-wrapper {
-            height: 200px;
+            height: 220px;
         }
 
         .refresh-btn {
@@ -301,11 +322,6 @@
             font-size: 0.7rem;
             padding: 16px 0;
             line-height: 1.6;
-        }
-
-        .footer a {
-            color: #ffd700;
-            text-decoration: none;
         }
 
         .error-msg {
@@ -349,9 +365,9 @@
                 <div class="sub">元/克</div>
             </div>
             <div class="price-card">
-                <div class="label">XAG/USD 银价</div>
-                <div class="value silver" id="silverPrice">--</div>
-                <div class="sub">美元/盎司</div>
+                <div class="label">美元金价</div>
+                <div class="value" id="goldGram">--</div>
+                <div class="sub">美元/克</div>
             </div>
         </div>
 
@@ -361,18 +377,23 @@
                 <div class="value" id="prevClose">--</div>
             </div>
             <div class="info-item">
-                <div class="label">金价 ($/克)</div>
-                <div class="value" id="goldGram">--</div>
+                <div class="label">今日最高</div>
+                <div class="value" id="dayHigh">--</div>
             </div>
             <div class="info-item">
-                <div class="label">金银比</div>
-                <div class="value" id="ratio">--</div>
+                <div class="label">今日最低</div>
+                <div class="value" id="dayLow">--</div>
             </div>
         </div>
 
         <div class="chart-container">
             <div class="chart-header">
                 <span class="chart-title">📈 价格走势</span>
+                <div class="chart-tabs">
+                    <div class="chart-tab active" data-range="1d" onclick="switchChartRange('1d')">1天</div>
+                    <div class="chart-tab" data-range="1w" onclick="switchChartRange('1w')">1周</div>
+                    <div class="chart-tab" data-range="1m" onclick="switchChartRange('1m')">1月</div>
+                </div>
             </div>
             <div class="chart-wrapper">
                 <canvas id="priceChart"></canvas>
@@ -384,67 +405,51 @@
         </button>
 
         <div class="footer">
-            <p>数据来源：Yahoo Finance (GC=F, SI=F)</p>
+            <p>数据来源：Yahoo Finance (GC=F)</p>
             <p>涨跌幅相比昨日收盘价 · 每 60 秒自动刷新</p>
             <p>仅供参考，不构成投资建议</p>
         </div>
     </div>
 
     <script>
-        // 配置
         const CONFIG = {
             corsProxies: [
                 'https://corsproxy.io/?',
                 'https://api.allorigins.win/raw?url='
             ],
-            yahooGoldUrl: 'https://query1.finance.yahoo.com/v8/finance/chart/GC=F',
-            yahooSilverUrl: 'https://query1.finance.yahoo.com/v8/finance/chart/SI=F',
+            yahooUrls: {
+                '1d': 'https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=5m&range=1d',
+                '1w': 'https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1h&range=5d',
+                '1m': 'https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1mo'
+            },
             usdCny: 7.25,
             ozToGram: 31.1035,
             refreshInterval: 60000,
-            cacheKey: 'goldPriceCache',
-            cacheExpiry: 300000  // 缓存5分钟
+            cacheKey: 'goldPriceCache_v3'
         };
 
-        let state = { gold: 0, silver: 0, prevGold: 0, prevClose: 0, priceHistory: [] };
+        let state = {
+            gold: 0, prevGold: 0, prevClose: 0, dayHigh: 0, dayLow: 0,
+            chartData: { '1d': null, '1w': null, '1m': null },
+            currentRange: '1d'
+        };
+
         let chart = null;
 
-        // 缓存
         function getCache() {
             try {
                 const c = localStorage.getItem(CONFIG.cacheKey);
                 if (c) {
                     const d = JSON.parse(c);
-                    if (Date.now() - d.timestamp < CONFIG.cacheExpiry) return d;
+                    if (Date.now() - d.timestamp < 300000) return d;
                 }
             } catch (e) { }
             return null;
         }
 
-        function setCache(gold, silver, prevClose) {
+        function setCache(data) {
             try {
-                localStorage.setItem(CONFIG.cacheKey, JSON.stringify({
-                    gold, silver, prevClose,
-                    timestamp: Date.now(),
-                    history: state.priceHistory.slice(-30) // 保存最近30条走势
-                }));
-            } catch (e) { }
-        }
-
-        // 加载历史走势
-        function loadHistory() {
-            try {
-                const c = localStorage.getItem(CONFIG.cacheKey);
-                if (c) {
-                    const d = JSON.parse(c);
-                    if (d.history && Array.isArray(d.history)) {
-                        // 恢复历史数据，转换时间字符串为Date对象
-                        state.priceHistory = d.history.map(h => ({
-                            time: new Date(h.time),
-                            price: h.price
-                        }));
-                    }
-                }
+                localStorage.setItem(CONFIG.cacheKey, JSON.stringify({ ...data, timestamp: Date.now() }));
             } catch (e) { }
         }
 
@@ -461,8 +466,7 @@
             document.getElementById('errorBox').innerHTML = '';
         }
 
-        // 带超时的 fetch
-        async function fetchWithTimeout(url, timeout = 10000) {
+        async function fetchWithTimeout(url, timeout = 12000) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeout);
             try {
@@ -475,27 +479,40 @@
             }
         }
 
-        // 竞速获取（哪个代理快用哪个）
         async function fetchWithProxy(url) {
-            const racePromises = CONFIG.corsProxies.map(async (proxy) => {
-                const res = await fetchWithTimeout(proxy + encodeURIComponent(url), 12000);
+            const promises = CONFIG.corsProxies.map(async (proxy) => {
+                const res = await fetchWithTimeout(proxy + encodeURIComponent(url), 15000);
                 if (!res.ok) throw new Error('Not OK');
                 return res.json();
             });
-
-            // Promise.any - 返回第一个成功的
-            return Promise.any(racePromises);
+            return Promise.any(promises);
         }
 
         function parseYahooData(data) {
             if (!data?.chart?.result?.[0]) throw new Error('格式错误');
-            const meta = data.chart.result[0].meta;
+
+            const result = data.chart.result[0];
+            const meta = result.meta;
             const price = meta.regularMarketPrice;
             const prevClose = meta.previousClose || meta.chartPreviousClose || price;
+            const dayHigh = meta.regularMarketDayHigh || price;
+            const dayLow = meta.regularMarketDayLow || price;
+
+            const timestamps = result.timestamp || [];
+            const closes = result.indicators?.quote?.[0]?.close || [];
+
+            const chartPoints = [];
+            for (let i = 0; i < timestamps.length; i++) {
+                if (closes[i] != null) {
+                    chartPoints.push({ time: timestamps[i] * 1000, price: closes[i] });
+                }
+            }
+
             return {
-                price, prevClose,
+                price, prevClose, dayHigh, dayLow,
                 change: price - prevClose,
-                changePercent: ((price - prevClose) / prevClose) * 100
+                changePercent: ((price - prevClose) / prevClose) * 100,
+                chartPoints
             };
         }
 
@@ -505,18 +522,17 @@
             btn.textContent = '加载中...';
             clearError();
 
-            // 优先显示缓存
             if (!forceRefresh) {
                 const cached = getCache();
-                if (cached) {
-                    state.gold = cached.gold;
-                    state.silver = cached.silver;
-                    state.prevClose = cached.prevClose;
+                if (cached?.gold) {
+                    state = { ...state, ...cached };
                     updateDisplay({
                         price: cached.gold, prevClose: cached.prevClose,
+                        dayHigh: cached.dayHigh, dayLow: cached.dayLow,
                         change: cached.gold - cached.prevClose,
                         changePercent: ((cached.gold - cached.prevClose) / cached.prevClose) * 100
                     });
+                    updateChart();
                     setStatus('cached', '缓存数据');
                     document.getElementById('updateTime').textContent = '正在更新...';
                 }
@@ -525,30 +541,24 @@
             setStatus('loading', '获取实时数据...');
 
             try {
-                // 并行获取金银价格
-                const goldPromise = fetchWithProxy(CONFIG.yahooGoldUrl);
-                const silverPromise = fetchWithProxy(CONFIG.yahooSilverUrl).catch(() => null);
-
-                const [goldData, silverData] = await Promise.all([goldPromise, silverPromise]);
-                const gold = parseYahooData(goldData);
+                const url = CONFIG.yahooUrls[state.currentRange];
+                const data = await fetchWithProxy(url);
+                const parsed = parseYahooData(data);
 
                 state.prevGold = state.gold;
-                state.gold = gold.price;
-                state.prevClose = gold.prevClose;
+                state.gold = parsed.price;
+                state.prevClose = parsed.prevClose;
+                state.dayHigh = parsed.dayHigh;
+                state.dayLow = parsed.dayLow;
+                state.chartData[state.currentRange] = parsed.chartPoints;
 
-                if (silverData) {
-                    try { state.silver = parseYahooData(silverData).price; }
-                    catch { state.silver = state.gold / 88; }
-                } else {
-                    state.silver = state.gold / 88;
-                }
+                setCache({
+                    gold: state.gold, prevClose: state.prevClose,
+                    dayHigh: state.dayHigh, dayLow: state.dayLow,
+                    chartData: state.chartData
+                });
 
-                setCache(state.gold, state.silver, state.prevClose);
-
-                state.priceHistory.push({ time: new Date(), price: state.gold });
-                if (state.priceHistory.length > 60) state.priceHistory.shift();
-
-                updateDisplay(gold);
+                updateDisplay(parsed);
                 updateChart();
 
                 setStatus('connected', '实时数据');
@@ -565,6 +575,35 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = '刷新数据';
+            }
+        }
+
+        async function switchChartRange(range) {
+            document.querySelectorAll('.chart-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.range === range);
+            });
+
+            state.currentRange = range;
+
+            if (state.chartData[range]) {
+                updateChart();
+            }
+
+            try {
+                const url = CONFIG.yahooUrls[range];
+                const data = await fetchWithProxy(url);
+                const parsed = parseYahooData(data);
+                state.chartData[range] = parsed.chartPoints;
+
+                setCache({
+                    gold: state.gold, prevClose: state.prevClose,
+                    dayHigh: state.dayHigh, dayLow: state.dayLow,
+                    chartData: state.chartData
+                });
+
+                updateChart();
+            } catch (e) {
+                console.error('获取图表数据失败:', e);
             }
         }
 
@@ -587,16 +626,13 @@
             document.getElementById('goldCNY').textContent = `¥${((state.gold * CONFIG.usdCny) / CONFIG.ozToGram).toFixed(2)}`;
             document.getElementById('goldGram').textContent = `$${(state.gold / CONFIG.ozToGram).toFixed(2)}`;
             document.getElementById('prevClose').textContent = `$${state.prevClose.toFixed(2)}`;
-
-            if (state.silver > 0) {
-                document.getElementById('silverPrice').textContent = `$${state.silver.toFixed(2)}`;
-                document.getElementById('ratio').textContent = (state.gold / state.silver).toFixed(1);
-            }
+            document.getElementById('dayHigh').textContent = `$${state.dayHigh.toFixed(2)}`;
+            document.getElementById('dayLow').textContent = `$${state.dayLow.toFixed(2)}`;
         }
 
         function initChart() {
             const ctx = document.getElementById('priceChart').getContext('2d');
-            const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+            const gradient = ctx.createLinearGradient(0, 0, 0, 220);
             gradient.addColorStop(0, 'rgba(255,215,0,0.3)');
             gradient.addColorStop(1, 'rgba(255,215,0,0)');
 
@@ -607,8 +643,8 @@
                     responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#8b949e', maxTicksLimit: 5 } },
-                        y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#8b949e', callback: v => '$' + v } }
+                        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#8b949e', maxTicksLimit: 6, font: { size: 10 } } },
+                        y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#8b949e', callback: v => '$' + v.toFixed(0), font: { size: 10 } } }
                     }
                 }
             });
@@ -616,15 +652,29 @@
 
         function updateChart() {
             if (!chart) return;
-            chart.data.labels = state.priceHistory.map(p => p.time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }));
-            chart.data.datasets[0].data = state.priceHistory.map(p => p.price);
+
+            const data = state.chartData[state.currentRange];
+            if (!data || !data.length) return;
+
+            const formatLabel = (ts) => {
+                const d = new Date(ts);
+                if (state.currentRange === '1d') return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                if (state.currentRange === '1w') return d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+                return d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+            };
+
+            chart.data.labels = data.map(p => formatLabel(p.time));
+            chart.data.datasets[0].data = data.map(p => p.price);
             chart.update('none');
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             initChart();
-            loadHistory();  // 加载历史走势
-            updateChart();  // 立即显示历史走势
+            const cached = getCache();
+            if (cached?.chartData) {
+                state.chartData = cached.chartData;
+                updateChart();
+            }
             fetchData();
             setInterval(() => fetchData(false), CONFIG.refreshInterval);
             document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') fetchData(false); });
