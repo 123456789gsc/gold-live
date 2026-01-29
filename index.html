@@ -403,7 +403,7 @@
             ozToGram: 31.1035,
             refreshInterval: 60000,
             cacheKey: 'goldPriceCache',
-            cacheExpiry: 120000
+            cacheExpiry: 300000  // 缓存5分钟
         };
 
         let state = { gold: 0, silver: 0, prevGold: 0, prevClose: 0, priceHistory: [] };
@@ -423,7 +423,28 @@
 
         function setCache(gold, silver, prevClose) {
             try {
-                localStorage.setItem(CONFIG.cacheKey, JSON.stringify({ gold, silver, prevClose, timestamp: Date.now() }));
+                localStorage.setItem(CONFIG.cacheKey, JSON.stringify({
+                    gold, silver, prevClose,
+                    timestamp: Date.now(),
+                    history: state.priceHistory.slice(-30) // 保存最近30条走势
+                }));
+            } catch (e) { }
+        }
+
+        // 加载历史走势
+        function loadHistory() {
+            try {
+                const c = localStorage.getItem(CONFIG.cacheKey);
+                if (c) {
+                    const d = JSON.parse(c);
+                    if (d.history && Array.isArray(d.history)) {
+                        // 恢复历史数据，转换时间字符串为Date对象
+                        state.priceHistory = d.history.map(h => ({
+                            time: new Date(h.time),
+                            price: h.price
+                        }));
+                    }
+                }
             } catch (e) { }
         }
 
@@ -602,6 +623,8 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             initChart();
+            loadHistory();  // 加载历史走势
+            updateChart();  // 立即显示历史走势
             fetchData();
             setInterval(() => fetchData(false), CONFIG.refreshInterval);
             document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') fetchData(false); });
