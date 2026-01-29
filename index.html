@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -8,411 +9,604 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
-            min-height: 100vh; color: #fff; padding: 16px;
+            min-height: 100vh;
+            color: #fff;
+            padding: 16px;
             padding-top: max(16px, env(safe-area-inset-top));
             padding-bottom: max(16px, env(safe-area-inset-bottom));
         }
-        .container { max-width: 600px; margin: 0 auto; }
-        
-        header { text-align: center; margin-bottom: 20px; }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
         header h1 {
-            font-size: 1.6rem; font-weight: 700;
+            font-size: 1.6rem;
+            font-weight: 700;
             background: linear-gradient(90deg, #ffd700, #ffed4a);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             margin-bottom: 8px;
         }
-        
+
         .status-bar {
-            display: flex; align-items: center; justify-content: center;
-            gap: 10px; flex-wrap: wrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
+
         .live-indicator {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 4px 10px; border-radius: 12px; font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
         }
-        .live-indicator.connected { background: rgba(0,200,83,0.15); color: #00c853; }
-        .live-indicator.loading { background: rgba(255,215,0,0.15); color: #ffd700; }
-        .live-indicator.error { background: rgba(255,82,82,0.15); color: #ff5252; }
+
+        .live-indicator.connected {
+            background: rgba(0, 200, 83, 0.15);
+            color: #00c853;
+        }
+
+        .live-indicator.loading {
+            background: rgba(255, 215, 0, 0.15);
+            color: #ffd700;
+        }
+
+        .live-indicator.error {
+            background: rgba(255, 82, 82, 0.15);
+            color: #ff5252;
+        }
+
+        .live-indicator.cached {
+            background: rgba(100, 149, 237, 0.15);
+            color: #6495ed;
+        }
+
         .live-dot {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: currentColor; animation: pulse 1.5s infinite;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 1.5s infinite;
         }
-        @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
-        .update-time { color: #8b949e; font-size: 0.75rem; }
-        
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        .update-time {
+            color: #8b949e;
+            font-size: 0.75rem;
+        }
+
         .main-card {
-            background: linear-gradient(145deg, rgba(255,215,0,0.1), rgba(255,215,0,0.02));
-            border: 1px solid rgba(255,215,0,0.2);
-            border-radius: 20px; padding: 24px; margin-bottom: 16px;
+            background: linear-gradient(145deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.02));
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 16px;
             text-align: center;
         }
-        .main-card .label { color: #8b949e; font-size: 0.85rem; margin-bottom: 8px; }
+
+        .main-card .label {
+            color: #8b949e;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+
         .main-card .price {
-            font-size: 3rem; font-weight: 700; color: #ffd700;
-            line-height: 1.1; margin-bottom: 12px;
+            font-size: 3rem;
+            font-weight: 700;
+            color: #ffd700;
+            line-height: 1.1;
+            margin-bottom: 12px;
             transition: color 0.3s;
         }
-        .main-card .price.flash-up { color: #00ff88; }
-        .main-card .price.flash-down { color: #ff4444; }
-        .change-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+        .main-card .price.flash-up {
+            color: #00ff88;
+        }
+
+        .main-card .price.flash-down {
+            color: #ff4444;
+        }
+
+        .main-card .price.loading-text {
+            font-size: 1.2rem;
+            color: #8b949e;
+            animation: fadeInOut 1.5s infinite;
+        }
+
+        @keyframes fadeInOut {
+
+            0%,
+            100% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .change-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
         .change-badge {
-            padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
         }
-        .change-badge.positive { background: rgba(0,200,83,0.2); color: #00c853; }
-        .change-badge.negative { background: rgba(255,82,82,0.2); color: #ff5252; }
-        
+
+        .change-badge.positive {
+            background: rgba(0, 200, 83, 0.2);
+            color: #00c853;
+        }
+
+        .change-badge.negative {
+            background: rgba(255, 82, 82, 0.2);
+            color: #ff5252;
+        }
+
         .price-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
         }
+
         .price-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 16px; padding: 16px; text-align: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
         }
-        .price-card .label { color: #8b949e; font-size: 0.75rem; margin-bottom: 6px; }
-        .price-card .value { font-size: 1.3rem; font-weight: 600; }
-        .price-card .value.gold { color: #ffd700; }
-        .price-card .value.silver { color: #c0c0c0; }
-        .price-card .value.cny { color: #ff6b6b; }
-        .price-card .sub { color: #8b949e; font-size: 0.7rem; margin-top: 4px; }
-        
+
+        .price-card .label {
+            color: #8b949e;
+            font-size: 0.75rem;
+            margin-bottom: 6px;
+        }
+
+        .price-card .value {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .price-card .value.gold {
+            color: #ffd700;
+        }
+
+        .price-card .value.silver {
+            color: #c0c0c0;
+        }
+
+        .price-card .value.cny {
+            color: #ff6b6b;
+        }
+
+        .price-card .sub {
+            color: #8b949e;
+            font-size: 0.7rem;
+            margin-top: 4px;
+        }
+
         .info-row {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
         }
+
         .info-item {
-            background: rgba(255,255,255,0.02); border-radius: 12px; padding: 12px; text-align: center;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
         }
-        .info-item .label { color: #8b949e; font-size: 0.65rem; margin-bottom: 4px; }
-        .info-item .value { font-size: 0.95rem; font-weight: 600; color: #fff; }
-        
+
+        .info-item .label {
+            color: #8b949e;
+            font-size: 0.65rem;
+            margin-bottom: 4px;
+        }
+
+        .info-item .value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
         .chart-container {
-            background: rgba(255,255,255,0.02);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 16px; padding: 16px; margin-bottom: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
         }
+
         .chart-header {
-            display: flex; justify-content: space-between; align-items: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 12px;
         }
-        .chart-title { font-size: 0.9rem; color: #ffd700; }
-        .chart-wrapper { height: 200px; }
-        
+
+        .chart-title {
+            font-size: 0.9rem;
+            color: #ffd700;
+        }
+
+        .chart-wrapper {
+            height: 200px;
+        }
+
         .refresh-btn {
-            width: 100%; padding: 14px;
+            width: 100%;
+            padding: 14px;
             background: linear-gradient(135deg, #ffd700, #ff8c00);
-            border: none; border-radius: 14px;
-            color: #000; font-size: 1rem; font-weight: 600;
-            cursor: pointer; transition: transform 0.2s, opacity 0.2s;
+            border: none;
+            border-radius: 14px;
+            color: #000;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
         }
-        .refresh-btn:active { transform: scale(0.98); }
-        .refresh-btn:disabled { opacity: 0.5; }
-        
+
+        .refresh-btn:active {
+            transform: scale(0.98);
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.5;
+        }
+
         .footer {
-            text-align: center; color: #484f58; font-size: 0.7rem;
-            padding: 16px 0; line-height: 1.6;
+            text-align: center;
+            color: #484f58;
+            font-size: 0.7rem;
+            padding: 16px 0;
+            line-height: 1.6;
         }
-        .footer a { color: #ffd700; text-decoration: none; }
-        
+
+        .footer a {
+            color: #ffd700;
+            text-decoration: none;
+        }
+
         .error-msg {
-            background: rgba(255,82,82,0.1);
-            border: 1px solid rgba(255,82,82,0.2);
-            border-radius: 12px; padding: 12px;
-            color: #ff8a8a; font-size: 0.85rem;
-            text-align: center; margin-bottom: 16px;
+            background: rgba(255, 82, 82, 0.1);
+            border: 1px solid rgba(255, 82, 82, 0.2);
+            border-radius: 12px;
+            padding: 12px;
+            color: #ff8a8a;
+            font-size: 0.85rem;
+            text-align: center;
+            margin-bottom: 16px;
         }
     </style>
 </head>
+
 <body>
-<div class="container">
-    <header>
-        <h1>🏆 国际黄金实时行情</h1>
-        <div class="status-bar">
-            <span class="live-indicator loading" id="status">
-                <span class="live-dot"></span>
-                <span id="statusText">连接中...</span>
-            </span>
-            <span class="update-time" id="updateTime">--</span>
+    <div class="container">
+        <header>
+            <h1>🏆 国际黄金实时行情</h1>
+            <div class="status-bar">
+                <span class="live-indicator loading" id="status">
+                    <span class="live-dot"></span>
+                    <span id="statusText">加载中...</span>
+                </span>
+                <span class="update-time" id="updateTime">--</span>
+            </div>
+        </header>
+
+        <div id="errorBox"></div>
+
+        <div class="main-card">
+            <div class="label">XAU/USD 现货金价 (美元/盎司)</div>
+            <div class="price loading-text" id="goldPrice">正在获取数据...</div>
+            <div class="change-row" id="goldChange"></div>
         </div>
-    </header>
-    
-    <div id="errorBox"></div>
-    
-    <div class="main-card">
-        <div class="label">XAU/USD 现货金价 (美元/盎司)</div>
-        <div class="price" id="goldPrice">--</div>
-        <div class="change-row" id="goldChange">
-            <span class="change-badge positive">--</span>
-            <span class="change-badge positive">--</span>
+
+        <div class="price-grid">
+            <div class="price-card">
+                <div class="label">人民币金价</div>
+                <div class="value cny" id="goldCNY">--</div>
+                <div class="sub">元/克</div>
+            </div>
+            <div class="price-card">
+                <div class="label">XAG/USD 银价</div>
+                <div class="value silver" id="silverPrice">--</div>
+                <div class="sub">美元/盎司</div>
+            </div>
+        </div>
+
+        <div class="info-row">
+            <div class="info-item">
+                <div class="label">昨日收盘</div>
+                <div class="value" id="prevClose">--</div>
+            </div>
+            <div class="info-item">
+                <div class="label">金价 ($/克)</div>
+                <div class="value" id="goldGram">--</div>
+            </div>
+            <div class="info-item">
+                <div class="label">金银比</div>
+                <div class="value" id="ratio">--</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-header">
+                <span class="chart-title">📈 价格走势</span>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+
+        <button class="refresh-btn" id="refreshBtn" onclick="fetchData(true)">
+            刷新数据
+        </button>
+
+        <div class="footer">
+            <p>数据来源：Yahoo Finance (GC=F, SI=F)</p>
+            <p>涨跌幅相比昨日收盘价 · 每 60 秒自动刷新</p>
+            <p>仅供参考，不构成投资建议</p>
         </div>
     </div>
-    
-    <div class="price-grid">
-        <div class="price-card">
-            <div class="label">人民币金价</div>
-            <div class="value cny" id="goldCNY">--</div>
-            <div class="sub">元/克</div>
-        </div>
-        <div class="price-card">
-            <div class="label">XAG/USD 银价</div>
-            <div class="value silver" id="silverPrice">--</div>
-            <div class="sub">美元/盎司</div>
-        </div>
-    </div>
-    
-    <div class="info-row">
-        <div class="info-item">
-            <div class="label">昨日收盘</div>
-            <div class="value" id="prevClose">--</div>
-        </div>
-        <div class="info-item">
-            <div class="label">金价 ($/克)</div>
-            <div class="value" id="goldGram">--</div>
-        </div>
-        <div class="info-item">
-            <div class="label">金银比</div>
-            <div class="value" id="ratio">--</div>
-        </div>
-    </div>
-    
-    <div class="chart-container">
-        <div class="chart-header">
-            <span class="chart-title">📈 价格走势</span>
-        </div>
-        <div class="chart-wrapper">
-            <canvas id="priceChart"></canvas>
-        </div>
-    </div>
-    
-    <button class="refresh-btn" id="refreshBtn" onclick="fetchData()">
-        刷新数据
-    </button>
-    
-    <div class="footer">
-        <p>数据来源：Yahoo Finance (GC=F, SI=F)</p>
-        <p>涨跌幅相比昨日收盘价 · 每 30 秒自动刷新</p>
-        <p>仅供参考，不构成投资建议</p>
-    </div>
-</div>
 
-<script>
-// 配置
-const CONFIG = {
-    // CORS 代理列表
-    corsProxies: [
-        'https://api.allorigins.win/raw?url=',
-        'https://corsproxy.io/?'
-    ],
-    yahooGoldUrl: 'https://query1.finance.yahoo.com/v8/finance/chart/GC=F',
-    yahooSilverUrl: 'https://query1.finance.yahoo.com/v8/finance/chart/SI=F',
-    usdCny: 7.25,
-    ozToGram: 31.1035,
-    refreshInterval: 30000
-};
+    <script>
+        // 配置
+        const CONFIG = {
+            corsProxies: [
+                'https://corsproxy.io/?',
+                'https://api.allorigins.win/raw?url='
+            ],
+            yahooGoldUrl: 'https://query1.finance.yahoo.com/v8/finance/chart/GC=F',
+            yahooSilverUrl: 'https://query1.finance.yahoo.com/v8/finance/chart/SI=F',
+            usdCny: 7.25,
+            ozToGram: 31.1035,
+            refreshInterval: 60000,
+            cacheKey: 'goldPriceCache',
+            cacheExpiry: 120000
+        };
 
-// 状态
-let state = {
-    gold: 0,
-    silver: 0,
-    prevGold: 0,
-    prevClose: 0,
-    priceHistory: []
-};
+        let state = { gold: 0, silver: 0, prevGold: 0, prevClose: 0, priceHistory: [] };
+        let chart = null;
 
-let chart = null;
-let currentProxyIndex = 0;
+        // 缓存
+        function getCache() {
+            try {
+                const c = localStorage.getItem(CONFIG.cacheKey);
+                if (c) {
+                    const d = JSON.parse(c);
+                    if (Date.now() - d.timestamp < CONFIG.cacheExpiry) return d;
+                }
+            } catch (e) { }
+            return null;
+        }
 
-// 更新状态指示器
-function setStatus(type, text) {
-    const el = document.getElementById('status');
-    const textEl = document.getElementById('statusText');
-    el.className = 'live-indicator ' + type;
-    textEl.textContent = text;
-}
+        function setCache(gold, silver, prevClose) {
+            try {
+                localStorage.setItem(CONFIG.cacheKey, JSON.stringify({ gold, silver, prevClose, timestamp: Date.now() }));
+            } catch (e) { }
+        }
 
-function showError(msg) {
-    document.getElementById('errorBox').innerHTML = `<div class="error-msg">${msg}</div>`;
-}
+        function setStatus(type, text) {
+            document.getElementById('status').className = 'live-indicator ' + type;
+            document.getElementById('statusText').textContent = text;
+        }
 
-function clearError() {
-    document.getElementById('errorBox').innerHTML = '';
-}
+        function showError(msg) {
+            document.getElementById('errorBox').innerHTML = `<div class="error-msg">${msg}</div>`;
+        }
 
-// 通过代理获取数据
-async function fetchWithProxy(url) {
-    for (let i = 0; i < CONFIG.corsProxies.length; i++) {
-        const proxyIndex = (currentProxyIndex + i) % CONFIG.corsProxies.length;
-        const proxy = CONFIG.corsProxies[proxyIndex];
-        
-        try {
-            const fullUrl = proxy + encodeURIComponent(url);
-            const response = await fetch(fullUrl);
-            
-            if (response.ok) {
-                const text = await response.text();
-                currentProxyIndex = proxyIndex;
-                return JSON.parse(text);
+        function clearError() {
+            document.getElementById('errorBox').innerHTML = '';
+        }
+
+        // 带超时的 fetch
+        async function fetchWithTimeout(url, timeout = 10000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            try {
+                const res = await fetch(url, { signal: controller.signal });
+                clearTimeout(id);
+                return res;
+            } catch (e) {
+                clearTimeout(id);
+                throw e;
             }
-        } catch (e) {
-            console.log(`代理 ${proxyIndex} 失败:`, e.message);
         }
-    }
-    throw new Error('无法获取数据');
-}
 
-// 解析 Yahoo Finance 数据
-function parseYahooData(data) {
-    if (!data?.chart?.result?.[0]) {
-        throw new Error('数据格式错误');
-    }
-    
-    const meta = data.chart.result[0].meta;
-    const price = meta.regularMarketPrice;
-    const prevClose = meta.previousClose || meta.chartPreviousClose || price;
-    
-    return {
-        price,
-        prevClose,
-        change: price - prevClose,
-        changePercent: ((price - prevClose) / prevClose) * 100
-    };
-}
+        // 竞速获取（哪个代理快用哪个）
+        async function fetchWithProxy(url) {
+            const racePromises = CONFIG.corsProxies.map(async (proxy) => {
+                const res = await fetchWithTimeout(proxy + encodeURIComponent(url), 12000);
+                if (!res.ok) throw new Error('Not OK');
+                return res.json();
+            });
 
-// 获取数据
-async function fetchData() {
-    const btn = document.getElementById('refreshBtn');
-    btn.disabled = true;
-    btn.textContent = '加载中...';
-    setStatus('loading', '获取数据...');
-    clearError();
-    
-    try {
-        // 获取金价
-        const goldData = await fetchWithProxy(CONFIG.yahooGoldUrl);
-        const gold = parseYahooData(goldData);
-        
-        // 更新状态
-        state.prevGold = state.gold;
-        state.gold = gold.price;
-        state.prevClose = gold.prevClose;
-        
-        // 获取银价
-        try {
-            const silverData = await fetchWithProxy(CONFIG.yahooSilverUrl);
-            const silver = parseYahooData(silverData);
-            state.silver = silver.price;
-        } catch (e) {
-            state.silver = state.gold / 88;
+            // Promise.any - 返回第一个成功的
+            return Promise.any(racePromises);
         }
-        
-        // 记录历史
-        state.priceHistory.push({ time: new Date(), price: state.gold });
-        if (state.priceHistory.length > 60) state.priceHistory.shift();
-        
-        updateDisplay(gold);
-        updateChart();
-        
-        setStatus('connected', '实时连接');
-        document.getElementById('updateTime').textContent = `更新: ${new Date().toLocaleTimeString('zh-CN')}`;
-        
-    } catch (error) {
-        console.error('获取失败:', error);
-        setStatus('error', '连接失败');
-        showError('获取数据失败，请检查网络后点击刷新');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = '刷新数据';
-    }
-}
 
-// 更新显示
-function updateDisplay(gold) {
-    const priceEl = document.getElementById('goldPrice');
-    priceEl.textContent = `$${state.gold.toFixed(2)}`;
-    
-    // 闪烁效果
-    if (state.prevGold > 0 && state.gold !== state.prevGold) {
-        const flash = state.gold > state.prevGold ? 'flash-up' : 'flash-down';
-        priceEl.classList.add(flash);
-        setTimeout(() => priceEl.classList.remove(flash), 500);
-    }
-    
-    // 涨跌幅
-    const isUp = gold.change >= 0;
-    document.getElementById('goldChange').innerHTML = `
-        <span class="change-badge ${isUp ? 'positive' : 'negative'}">
-            ${isUp ? '+' : ''}${gold.change.toFixed(2)}
-        </span>
-        <span class="change-badge ${isUp ? 'positive' : 'negative'}">
-            ${isUp ? '+' : ''}${gold.changePercent.toFixed(2)}%
-        </span>
+        function parseYahooData(data) {
+            if (!data?.chart?.result?.[0]) throw new Error('格式错误');
+            const meta = data.chart.result[0].meta;
+            const price = meta.regularMarketPrice;
+            const prevClose = meta.previousClose || meta.chartPreviousClose || price;
+            return {
+                price, prevClose,
+                change: price - prevClose,
+                changePercent: ((price - prevClose) / prevClose) * 100
+            };
+        }
+
+        async function fetchData(forceRefresh = false) {
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            btn.textContent = '加载中...';
+            clearError();
+
+            // 优先显示缓存
+            if (!forceRefresh) {
+                const cached = getCache();
+                if (cached) {
+                    state.gold = cached.gold;
+                    state.silver = cached.silver;
+                    state.prevClose = cached.prevClose;
+                    updateDisplay({
+                        price: cached.gold, prevClose: cached.prevClose,
+                        change: cached.gold - cached.prevClose,
+                        changePercent: ((cached.gold - cached.prevClose) / cached.prevClose) * 100
+                    });
+                    setStatus('cached', '缓存数据');
+                    document.getElementById('updateTime').textContent = '正在更新...';
+                }
+            }
+
+            setStatus('loading', '获取实时数据...');
+
+            try {
+                // 并行获取金银价格
+                const goldPromise = fetchWithProxy(CONFIG.yahooGoldUrl);
+                const silverPromise = fetchWithProxy(CONFIG.yahooSilverUrl).catch(() => null);
+
+                const [goldData, silverData] = await Promise.all([goldPromise, silverPromise]);
+                const gold = parseYahooData(goldData);
+
+                state.prevGold = state.gold;
+                state.gold = gold.price;
+                state.prevClose = gold.prevClose;
+
+                if (silverData) {
+                    try { state.silver = parseYahooData(silverData).price; }
+                    catch { state.silver = state.gold / 88; }
+                } else {
+                    state.silver = state.gold / 88;
+                }
+
+                setCache(state.gold, state.silver, state.prevClose);
+
+                state.priceHistory.push({ time: new Date(), price: state.gold });
+                if (state.priceHistory.length > 60) state.priceHistory.shift();
+
+                updateDisplay(gold);
+                updateChart();
+
+                setStatus('connected', '实时数据');
+                document.getElementById('updateTime').textContent = `更新: ${new Date().toLocaleTimeString('zh-CN')}`;
+
+            } catch (error) {
+                console.error('获取失败:', error);
+                if (state.gold > 0) {
+                    setStatus('cached', '使用缓存');
+                } else {
+                    setStatus('error', '连接失败');
+                    showError('获取失败，请点击刷新重试');
+                }
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '刷新数据';
+            }
+        }
+
+        function updateDisplay(gold) {
+            const priceEl = document.getElementById('goldPrice');
+            priceEl.className = 'price';
+            priceEl.textContent = `$${state.gold.toFixed(2)}`;
+
+            if (state.prevGold > 0 && state.gold !== state.prevGold) {
+                priceEl.classList.add(state.gold > state.prevGold ? 'flash-up' : 'flash-down');
+                setTimeout(() => priceEl.classList.remove('flash-up', 'flash-down'), 500);
+            }
+
+            const isUp = gold.change >= 0;
+            document.getElementById('goldChange').innerHTML = `
+        <span class="change-badge ${isUp ? 'positive' : 'negative'}">${isUp ? '+' : ''}${gold.change.toFixed(2)}</span>
+        <span class="change-badge ${isUp ? 'positive' : 'negative'}">${isUp ? '+' : ''}${gold.changePercent.toFixed(2)}%</span>
     `;
-    
-    // 人民币金价
-    const cnyPerGram = (state.gold * CONFIG.usdCny) / CONFIG.ozToGram;
-    document.getElementById('goldCNY').textContent = `¥${cnyPerGram.toFixed(2)}`;
-    document.getElementById('goldGram').textContent = `$${(state.gold / CONFIG.ozToGram).toFixed(2)}`;
-    document.getElementById('prevClose').textContent = `$${state.prevClose.toFixed(2)}`;
-    
-    if (state.silver > 0) {
-        document.getElementById('silverPrice').textContent = `$${state.silver.toFixed(2)}`;
-        document.getElementById('ratio').textContent = (state.gold / state.silver).toFixed(1);
-    }
-}
 
-// 初始化图表
-function initChart() {
-    const ctx = document.getElementById('priceChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-    gradient.addColorStop(0, 'rgba(255,215,0,0.3)');
-    gradient.addColorStop(1, 'rgba(255,215,0,0)');
-    
-    chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                data: [],
-                borderColor: '#ffd700',
-                backgroundColor: gradient,
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#8b949e', maxTicksLimit: 5 } },
-                y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#8b949e', callback: v => '$' + v } }
+            document.getElementById('goldCNY').textContent = `¥${((state.gold * CONFIG.usdCny) / CONFIG.ozToGram).toFixed(2)}`;
+            document.getElementById('goldGram').textContent = `$${(state.gold / CONFIG.ozToGram).toFixed(2)}`;
+            document.getElementById('prevClose').textContent = `$${state.prevClose.toFixed(2)}`;
+
+            if (state.silver > 0) {
+                document.getElementById('silverPrice').textContent = `$${state.silver.toFixed(2)}`;
+                document.getElementById('ratio').textContent = (state.gold / state.silver).toFixed(1);
             }
         }
-    });
-}
 
-// 更新图表
-function updateChart() {
-    if (!chart) return;
-    chart.data.labels = state.priceHistory.map(p => p.time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }));
-    chart.data.datasets[0].data = state.priceHistory.map(p => p.price);
-    chart.update('none');
-}
+        function initChart() {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+            gradient.addColorStop(0, 'rgba(255,215,0,0.3)');
+            gradient.addColorStop(1, 'rgba(255,215,0,0)');
 
-// 初始化
-document.addEventListener('DOMContentLoaded', () => {
-    initChart();
-    fetchData();
-    setInterval(fetchData, CONFIG.refreshInterval);
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') fetchData();
-    });
-});
-</script>
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ data: [], borderColor: '#ffd700', backgroundColor: gradient, borderWidth: 2, fill: true, tension: 0.4, pointRadius: 0 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#8b949e', maxTicksLimit: 5 } },
+                        y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#8b949e', callback: v => '$' + v } }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!chart) return;
+            chart.data.labels = state.priceHistory.map(p => p.time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }));
+            chart.data.datasets[0].data = state.priceHistory.map(p => p.price);
+            chart.update('none');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            fetchData();
+            setInterval(() => fetchData(false), CONFIG.refreshInterval);
+            document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') fetchData(false); });
+        });
+    </script>
 </body>
+
 </html>
